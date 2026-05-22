@@ -6,6 +6,12 @@ public class Tetromino : MonoBehaviour
     float previousTime;
     bool hasHeld = false;
 
+    // DAS settings
+    float dasDelay = 0.15f;
+    float dasInterval = 0.05f;
+    float dasTimerLeft = 0f;
+    float dasTimerRight = 0f;
+
     void Update()
     {
         // Hold piece
@@ -13,31 +19,65 @@ public class Tetromino : MonoBehaviour
         {
             if (!hasHeld)
             {
-                Debug.Log("C pressed - trying to hold");
                 hasHeld = true;
                 FindObjectOfType<HoldManager>().HoldPiece(this);
             }
         }
 
-        // Move left
+        // LEFT
         if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
             Move(Vector3.left);
+            dasTimerLeft = dasDelay;
         }
-        // Move right
-        else if (Input.GetKeyDown(KeyCode.RightArrow))
+        if (Input.GetKey(KeyCode.LeftArrow))
+        {
+            dasTimerLeft -= Time.deltaTime;
+            if (dasTimerLeft <= 0)
+            {
+                dasTimerLeft = dasInterval;
+                Move(Vector3.left);
+            }
+        }
+        if (Input.GetKeyUp(KeyCode.LeftArrow))
+        {
+            dasTimerLeft = 0;
+        }
+
+        // RIGHT
+        if (Input.GetKeyDown(KeyCode.RightArrow))
         {
             Move(Vector3.right);
+            dasTimerRight = dasDelay;
         }
+        if (Input.GetKey(KeyCode.RightArrow))
+        {
+            dasTimerRight -= Time.deltaTime;
+            if (dasTimerRight <= 0)
+            {
+                dasTimerRight = dasInterval;
+                Move(Vector3.right);
+            }
+        }
+        if (Input.GetKeyUp(KeyCode.RightArrow))
+        {
+            dasTimerRight = 0;
+        }
+
         // Rotate
-        else if (Input.GetKeyDown(KeyCode.UpArrow))
+        if (Input.GetKeyDown(KeyCode.UpArrow))
         {
             Rotate();
         }
+
         // Soft drop
-        else if (Input.GetKeyDown(KeyCode.DownArrow))
+        if (Input.GetKey(KeyCode.DownArrow))
         {
-            Move(Vector3.down);
+            if (Time.time - previousTime > fallTime / 10)
+            {
+                Move(Vector3.down);
+                previousTime = Time.time;
+            }
         }
 
         // Hard drop
@@ -96,24 +136,23 @@ public class Tetromino : MonoBehaviour
     }
 
     void LandPiece()
-{
-    foreach (Transform block in transform)
     {
-        Grid.AddToGrid(block);
+        foreach (Transform block in transform)
+        {
+            Grid.AddToGrid(block);
+        }
+
+        int lines = Grid.ClearLines();
+
+        if (lines > 0)
+            AudioManager.instance.PlayLineClear();
+        else
+            AudioManager.instance.PlayBlockLand();
+
+        transform.DetachChildren();
+        Destroy(gameObject);
+        FindObjectOfType<Spawner>().SpawnPiece();
     }
-
-    int lines = Grid.ClearLines();
-    
-    // Play correct sound
-    if (lines > 0)
-        AudioManager.instance.PlayLineClear();
-    else
-        AudioManager.instance.PlayBlockLand();
-
-    transform.DetachChildren();
-    Destroy(gameObject);
-    FindObjectOfType<Spawner>().SpawnPiece();
-}
 
     public bool IsValidPositionPublic()
     {
